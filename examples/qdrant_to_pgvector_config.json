@@ -1,0 +1,42 @@
+{
+  "source": {
+    "type": "qdrant",
+    "connection": {
+      "host": "localhost",
+      "port": 6333,
+      "api_key": null,
+      "https": false
+    },
+    "query": {
+      "collection_name": "products",
+      "limit": 10000,
+      "filter": {
+        "must": [
+          {
+            "key": "category",
+            "match": {
+              "value": "product"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "target": {
+    "type": "pgvector",
+    "connection": {
+      "host": "localhost",
+      "dbname": "vectordb",
+      "user": "postgres",
+      "password": "password",
+      "port": 5432
+    },
+    "load": {
+      "table_name": "embeddings_from_qdrant",
+      "id_column": "id",
+      "vector_column": "embedding",
+      "recreate_table": true,
+      "batch_size": 100
+    }
+  }
+}

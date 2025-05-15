@@ -2,14 +2,15 @@
 
 A Python library for migrating vector embeddings between different vector database systems. This tool simplifies the process of moving vector data between different database implementations while maintaining data consistency.
 
-[![PyPI version](https://img.shields.io/pypi/v/vectordb-migration.svg)](https://pypi.org/project/vectordb-migration/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/vectordb-migration.svg)](https://pypi.org/project/vectordb-migration/)
-[![License](https://img.shields.io/pypi/l/vectordb-migration.svg)](https://github.com/yourusername/vectordb-migration/blob/main/LICENSE)
+
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-311/)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/itaybenhaim/vectordb-migration/blob/main/LICENSE)
 
 ## Features
 
 - Seamless migration between different vector database systems
-- Support for pgvector (PostgreSQL) and Qdrant
+- Support for pgvector (PostgreSQL), Qdrant, and Pinecone
 - Configurable data transformation during migration
 - Easy-to-use command-line interface
 - Extendable adapter architecture for additional database support
@@ -56,6 +57,41 @@ pip install vectordb-migration
 }
 ```
 
+Or for Pinecone:
+
+```json
+{
+  "source": {
+    "type": "pgvector",
+    "connection": {
+      "host": "localhost",
+      "dbname": "vectordb",
+      "user": "postgres",
+      "password": "password"
+    },
+    "query": {
+      "table_name": "items",
+      "id_column": "id",
+      "vector_column": "embedding",
+      "metadata_columns": ["name", "description"]
+    }
+  },
+  "target": {
+    "type": "pinecone",
+    "connection": {
+      "api_key": "YOUR_PINECONE_API_KEY",
+      "environment": "YOUR_PINECONE_ENVIRONMENT"
+    },
+    "load": {
+      "index_name": "items_collection",
+      "create_index": true,
+      "dimension": 1536,
+      "metric": "cosine"
+    }
+  }
+}
+```
+
 2. Run the migration:
 
 ```bash
@@ -74,6 +110,7 @@ vdbm.run_migration("config.json")
 
 - **pgvector**: PostgreSQL with the pgvector extension
 - **Qdrant**: Qdrant vector database
+- **Pinecone**: Pinecone vector database
 
 ## Command-Line Usage
 
@@ -150,7 +187,7 @@ success = vdbm.run_migration("config.json", verbose=True)
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/vectordb-migration.git 
+git clone https://github.com/itaybenhaim/vectordb-migration.git 
 cd vectordb-migration
 
 # Install development dependencies

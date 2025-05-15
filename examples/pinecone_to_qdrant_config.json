@@ -1,0 +1,25 @@
+{
+  "source": {
+    "type": "pinecone",
+    "connection": {
+      "api_key": "YOUR_PINECONE_API_KEY",
+      "environment": "YOUR_PINECONE_ENVIRONMENT"
+    },
+    "query": {
+      "index_name": "source_collection",
+      "namespace": "default"
+    }
+  },
+  "target": {
+    "type": "qdrant",
+    "connection": {
+      "host": "localhost",
+      "port": 6333
+    },
+    "load": {
+      "collection_name": "target_collection",
+      "recreate_collection": true,
+      "distance": "Cosine"
+    }
+  }
+}

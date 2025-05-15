@@ -1,10 +1,41 @@
-# Python-generated files
+# Python bytecode
 __pycache__/
-*.py[oc]
-build/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
 dist/
-wheels/
-*.egg-info
+build/
+*.egg-info/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+*.cover
 
 # Virtual environments
-.venv
+venv/
+env/
+ENV/
+.venv/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Local development files
+.python-version

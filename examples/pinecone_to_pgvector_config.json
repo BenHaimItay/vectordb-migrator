@@ -1,0 +1,31 @@
+{
+  "source": {
+    "type": "pinecone",
+    "connection": {
+      "api_key": "YOUR_PINECONE_API_KEY",
+      "environment": "YOUR_PINECONE_ENVIRONMENT"
+    },
+    "query": {
+      "index_name": "items_collection",
+      "namespace": "default",
+      "batch_size": 100
+    }
+  },
+  "target": {
+    "type": "pgvector",
+    "connection": {
+      "host": "localhost",
+      "dbname": "vectordb",
+      "user": "postgres",
+      "password": "password"
+    },
+    "load": {
+      "table_name": "items",
+      "id_column": "id",
+      "vector_column": "embedding",
+      "metadata_column": "metadata",
+      "create_table": true,
+      "vector_dimension": 1536
+    }
+  }
+}

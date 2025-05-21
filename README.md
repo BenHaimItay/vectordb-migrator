@@ -10,7 +10,7 @@ A Python library for migrating vector embeddings between different vector databa
 ## Features
 
 - Seamless migration between different vector database systems
-- Support for pgvector (PostgreSQL), Qdrant, and Pinecone
+- Support for pgvector (PostgreSQL), Qdrant, Pinecone, and Milvus
 - Configurable data transformation during migration
 - Easy-to-use command-line interface
 - Extendable adapter architecture for additional database support
@@ -52,6 +52,34 @@ pip install vectordb-migration
       "collection_name": "items_collection",
       "recreate_collection": true,
       "distance": "Cosine"
+    }
+  }
+}
+```
+
+Or for Milvus:
+
+```json
+{
+  "source": {
+    "type": "qdrant", 
+    "connection": {
+      "host": "localhost",
+      "port": 6333
+    },
+    "query": {
+      "collection_name": "source_items"
+    }
+  },
+  "target": {
+    "type": "milvus",
+    "connection": {
+      "uri": "http://localhost:19530",
+      "token": "your_milvus_token_if_any", 
+      "db_name": "default" 
+    },
+    "load": {
+      "collection_name": "target_items_milvus"
     }
   }
 }
@@ -111,6 +139,7 @@ vdbm.run_migration("config.json")
 - **pgvector**: PostgreSQL with the pgvector extension
 - **Qdrant**: Qdrant vector database
 - **Pinecone**: Pinecone vector database
+- **Milvus**: Milvus vector database
 
 ## Command-Line Usage
 

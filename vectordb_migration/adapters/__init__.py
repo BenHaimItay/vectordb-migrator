@@ -7,12 +7,14 @@ This package contains adapters for different vector databases.
 from vectordb_migration.adapters.pgvector import PgVectorAdapter
 from vectordb_migration.adapters.pinecone import PineconeAdapter
 from vectordb_migration.adapters.qdrant import QdrantAdapter
+from vectordb_migration.adapters.milvus import MilvusAdapter
 
 # Registry of available adapters
 ADAPTERS = {
     "pgvector": PgVectorAdapter,
     "qdrant": QdrantAdapter,
-    "pinecone": PineconeAdapter
+    "pinecone": PineconeAdapter,
+    "milvus": MilvusAdapter,
 }
 
 

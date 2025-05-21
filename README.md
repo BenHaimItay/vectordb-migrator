@@ -210,6 +210,44 @@ success = vdbm.run_migration("config.json", "transform_module.py")
 success = vdbm.run_migration("config.json", verbose=True)
 ```
 
+## Demo using Docker Compose
+
+This project includes a `docker-compose.yml` setup to quickly demonstrate a migration from pgvector to Milvus. The setup includes:
+- A `pgvector` service initialized with sample data (see `docker/pgvector_init/init.sql`).
+- A `milvus` service as the migration target.
+- A `migration-tool` service containing the `vectordb-migrate` CLI and necessary dependencies.
+
+### Prerequisites
+
+- Docker installed (https://docs.docker.com/get-docker/)
+- Docker Compose installed (https://docs.docker.com/compose/install/)
+
+### Steps to Run the Demo
+
+1.  **Start all services:**
+    Open your terminal in the root of this project and run:
+    ```bash
+    docker-compose up -d --build
+    ```
+    The `--build` flag is recommended for the first run or if you make changes to the `migration-tool`'s Python environment (e.g., by modifying `pyproject.toml`). The `-d` flag runs services in detached mode.
+
+2.  **Execute the migration:**
+    Once all services are up and running (especially `pgvector-demo` and `milvus-demo`), execute the migration command:
+    ```bash
+    docker-compose exec migration-tool migrate --config /app/examples/pgvector_to_milvus_docker_config.json
+    ```
+    This command runs the `migrate` CLI tool (which should be `vectordb-migrate`, but the task description used `migrate`. Assuming `migrate` is an alias or the actual entry point name defined in `pyproject.toml` for the CLI) inside the `migration-tool` container. The configuration file `/app/examples/pgvector_to_milvus_docker_config.json` specifies the source (pgvector) and target (Milvus) details for the Docker services.
+
+3.  **Verify the migration (Optional):**
+    After the migration command completes successfully, the data from the `vector_items` table in pgvector should be in the `migrated_vector_items` collection in Milvus.
+    You can inspect the `migrated_vector_items` collection in Milvus using your preferred Milvus client or SDK (e.g., Attu, pymilvus SDK) connected to `localhost:19530` (the gRPC port for Milvus). You should find 4 items there, matching the sample data from `docker/pgvector_init/init.sql`.
+
+4.  **Stop and clean up:**
+    To stop the services and remove the containers, networks, and volumes (including the sample data), run:
+    ```bash
+    docker-compose down -v
+    ```
+
 ## Development
 
 ### Setup

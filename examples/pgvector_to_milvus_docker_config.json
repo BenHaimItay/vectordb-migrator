@@ -1,0 +1,27 @@
+{
+  "source": {
+    "type": "pgvector",
+    "connection_params": {
+      "host": "pgvector-demo",
+      "port": 5432,
+      "user": "testuser",
+      "password": "testpassword",
+      "dbname": "vectordb"
+    },
+    "query_params": {
+      "collection_name": "vector_items"
+    }
+  },
+  "target": {
+    "type": "milvus",
+    "connection_params": {
+      "alias": "default",
+      "host": "milvus-demo",
+      "port": "19530"
+    },
+    "load_params": {
+      "collection_name": "migrated_vector_items",
+      "recreate_collection": true
+    }
+  }
+}

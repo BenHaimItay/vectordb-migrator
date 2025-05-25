@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  pgvector:
+    image: ankane/pgvector:latest # Or specify a specific version like pgvector/pgvector:pg16
+    container_name: pgvector-demo
+    environment:
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpassword
+      - POSTGRES_DB=vectordb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/pgvector_init:/docker-entrypoint-initdb.d # Mount init scripts
+      - pgvector_data:/var/lib/postgresql/data # Optional: for data persistence
+
+  milvus:
+    image: milvusdb/milvus:v2.3.16-standalone # Using a specific v2.3.x version
+    container_name: milvus-demo
+    ports:
+      - "19530:19530" # gRPC
+      - "9091:9091"   # HTTP
+    environment:
+      # Milvus standalone typically doesn't require many specific env vars to just run,
+      # but check official Milvus docs for the image version if issues arise.
+      # Common ones might relate to data storage paths if not using default internal paths.
+      - ETCD_USE_EMBED=true # Often used for embedded etcd in standalone
+      - COMMON_STORAGETYPE=local # Default, but can be explicit
+    volumes:
+      - milvus_data:/milvus/data # Optional: for data persistence
+
+  migration-tool:
+    image: python:3.9-slim
+    container_name: migration-demo
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "pip install . && tail -f /dev/null"
+    depends_on:
+      - pgvector
+      - milvus
+
+volumes: # Define named volumes for data persistence (optional but good practice)
+  pgvector_data:
+  milvus_data:

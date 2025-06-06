@@ -210,98 +210,79 @@ success = vdbm.run_migration("config.json", "transform_module.py")
 success = vdbm.run_migration("config.json", verbose=True)
 ```
 
-## Demo using Docker Compose
+## Qwen3 Local Processing and Migration Demo (pgvector to Qdrant)
 
-This project includes a `docker-compose.yml` setup to quickly demonstrate a migration from pgvector to Milvus. The setup includes:
-- A `pgvector` service initialized with sample data (see `docker/pgvector_init/init.sql`).
-- A `milvus` service as the migration target.
-- A `migration-tool` service containing the `vectordb-migrate` CLI and necessary dependencies.
+This demo showcases an automated end-to-end pipeline using Docker Compose. The pipeline performs the following:
+1.  Downloads and utilizes a local Qwen3 GGUF model for text embedding via `llama.cpp`.
+2.  Loads a subset of the "CShorten/ML-ArXiv-Papers" dataset from Hugging Face.
+3.  Generates embeddings for these academic papers.
+4.  Stores the original text content (title, abstract) and the generated embeddings into a pgvector database.
+5.  Migrates this data from pgvector to a Qdrant database using the `vectordb-migration` tool.
+
+The entire process is orchestrated by the `qwen3-processor` service defined in `docker-compose.yml`.
+
+### Services Involved
+
+*   **`qwen3-processor`**: The main orchestrator service. Its Docker image is built with:
+    *   `llama.cpp` compiled from source.
+    *   The Qwen3 GGUF model downloaded from Hugging Face.
+    *   All necessary Python dependencies, including `llama-cpp-python`, `datasets`, `psycopg2-binary`, and `qdrant-client`.
+    *   The `vectordb-migration` tool itself (installed from project source).
+    When this service starts, it automatically runs the `examples/qwen3_process_and_migrate.py` script, which drives the entire workflow.
+*   **`pgvector-demo`**: A PostgreSQL database service with the pgvector extension enabled. It serves as the source database where texts and their embeddings are initially stored by the `qwen3-processor`. It is initialized with sample data via `docker/pgvector_init/init.sql`, though this demo script will create and use its own table (`arxiv_papers_demo`).
+*   **`qdrant-demo`**: A Qdrant vector database service. It serves as the target database to which the data from pgvector will be migrated.
 
 ### Prerequisites
 
-- Docker installed (https://docs.docker.com/get-docker/)
-- Docker Compose installed (https://docs.docker.com/compose/install/)
+*   **Docker and Docker Compose**: Ensure they are installed and operational on your system.
+*   **Disk Space**: Sufficient disk space is required for:
+    *   Docker images (Python base, pgvector, Qdrant).
+    *   The `llama.cpp` build artifacts within the `qwen3-processor` image (can be ~1-2GB).
+    *   The downloaded Qwen3 GGUF model (`Qwen3-Embedding-0.6B-Q8_0.gguf` is ~0.6GB) within the `qwen3-processor` image.
+*   **Internet Connection**: Required during the build of the `qwen3-processor` image for:
+    *   Cloning the `llama.cpp` repository from GitHub.
+    *   Downloading Python packages.
+    *   Downloading the Qwen3 GGUF model and the "CShorten/ML-ArXiv-Papers" dataset from Hugging Face.
 
-### Steps to Run the Demo
+### How to Run the Demo
 
-1.  **Start all services:**
-    Open your terminal in the root of this project and run:
+1.  **Build and Start Services:**
+    Navigate to the root directory of this project in your terminal and run:
     ```bash
     docker-compose up -d --build
     ```
-    The `--build` flag is recommended for the first run or if you make changes to the `migration-tool`'s Python environment (e.g., by modifying `pyproject.toml`). The `-d` flag runs services in detached mode.
+    *   The `--build` flag is essential, especially for the `qwen3-processor` service, as it needs to compile `llama.cpp` and download models. This might take several minutes on the first run.
+    *   The `-d` flag runs the services in detached mode.
 
-2.  **Execute the migration:**
-    Once all services are up and running (especially `pgvector-demo` and `milvus-demo`), execute the migration command:
+2.  **Monitor Progress:**
+    The main processing script (`examples/qwen3_process_and_migrate.py`) starts automatically within the `qwen3-processor-demo` container. You can monitor its progress by viewing the container's logs:
     ```bash
-    docker-compose exec migration-tool migrate --config /app/examples/pgvector_to_milvus_docker_config.json
+    docker-compose logs -f qwen3-processor-demo
     ```
-    This command runs the `migrate` CLI tool (which should be `vectordb-migrate`, but the task description used `migrate`. Assuming `migrate` is an alias or the actual entry point name defined in `pyproject.toml` for the CLI) inside the `migration-tool` container. The configuration file `/app/examples/pgvector_to_milvus_docker_config.json` specifies the source (pgvector) and target (Milvus) details for the Docker services.
+    Look for log messages indicating dataset loading, embedding generation, storage in pgvector, and the migration process.
 
-3.  **Verify the migration (Optional):**
-    After the migration command completes successfully, the data from the `vector_items` table in pgvector should be in the `migrated_vector_items` collection in Milvus.
-    You can inspect the `migrated_vector_items` collection in Milvus using your preferred Milvus client or SDK (e.g., Attu, pymilvus SDK) connected to `localhost:19530` (the gRPC port for Milvus). You should find 4 items there, matching the sample data from `docker/pgvector_init/init.sql`.
+3.  **Verification:**
+    Once the script running in `qwen3-processor-demo` indicates completion (or if you encounter errors, check its logs):
+    *   **pgvector**: Connect to the pgvector database. You can use any PostgreSQL client or `psql` CLI.
+        *   Host: `localhost` (or your Docker host IP)
+        *   Port: `5432`
+        *   User: `testuser`
+        *   Password: `testpassword`
+        *   Database: `vectordb`
+        Inspect the `arxiv_papers_demo` table (e.g., `SELECT COUNT(*) FROM arxiv_papers_demo; SELECT * FROM arxiv_papers_demo LIMIT 5;`). It should contain a number of rows equal to `DATASET_SUBSET_SIZE` (default 100 in the script) with titles, abstracts, and embeddings.
+    *   **Qdrant**: Access the Qdrant dashboard, typically at `http://localhost:6333/dashboard`.
+        Look for a collection named `migrated_arxiv_papers_demo`. It should contain the data migrated from pgvector, including vectors and payloads (title, abstract). You can check the point count and examine individual points.
 
-4.  **Stop and clean up:**
-    To stop the services and remove the containers, networks, and volumes (including the sample data), run:
+4.  **Stopping the Demo:**
+    To stop all services and remove the containers, networks, and volumes (including the data in pgvector and Qdrant, and the model downloaded inside the `qwen3-processor` container):
     ```bash
     docker-compose down -v
     ```
 
-### End-to-End Embedding and Migration Demo
+### Customization (Optional)
 
-This more comprehensive demo showcases a full cycle: generating text embeddings using a local model, storing them in pgvector, and then migrating this data to Milvus.
-
-**Overview:**
-
-1.  A `qwen3-embedder` service (using Qwen3-Embedding-0.6B-GGUF via `llama.cpp` and Flask) generates embeddings for sample texts.
-2.  These texts and their embeddings are stored in a new table (`text_embeddings_demo`) within the `pgvector` service.
-3.  The `migration-tool` then migrates this data from pgvector to a new collection (`migrated_text_embeddings_demo`) in the `milvus` service.
-
-**Prerequisites:**
-
-*   Docker and Docker Compose installed.
-*   The Qwen3 GGUF model file. You need to download it and place it in a `./models` directory:
-    1.  Create the directory:
-        ```bash
-        mkdir models
-        ```
-    2.  Download the model (e.g., `Qwen3-Embedding-0.6B-Q8_0.gguf`):
-        ```bash
-        huggingface-cli download Qwen/Qwen3-Embedding-0.6B-GGUF Qwen3-Embedding-0.6B-Q8_0.gguf --local-dir ./models --local-dir-use-symlinks False
-        ```
-        (Ensure you have `huggingface-cli` installed: `pip install -U huggingface_hub[cli]`). If you download manually, ensure the final path is `./models/Qwen3-Embedding-0.6B-Q8_0.gguf` as expected by the `qwen3-embedder` service's environment variables.
-
-**Steps to Run the Demo:**
-
-1.  **Start all services:**
-    Open your terminal in the root of this project and run:
-    ```bash
-    docker-compose up -d --build
-    ```
-    The `--build` flag is crucial here, especially for the `qwen3-embedder` service to build its Docker image and install dependencies. The `-d` flag runs services in detached mode. Wait a minute or two for services to initialize, especially the `qwen3-embedder` which needs to load the model.
-
-2.  **Execute the end-to-end demo script:**
-    ```bash
-    docker-compose exec migration-tool python examples/run_embedding_migration_demo.py
-    ```
-    This script orchestrates the entire process: it calls the `qwen3-embedder` to get embeddings for sample texts, stores these in a new table in pgvector, and then runs the `vectordb-migrate` CLI (with a dynamically generated configuration) to migrate the data to Milvus. Check the script's output in your terminal to follow its progress.
-
-3.  **Verify the migration:**
-    After the script completes successfully, the `text_embeddings_demo` table in pgvector (DB: `vectordb`, User: `testuser`) and the `migrated_text_embeddings_demo` collection in Milvus will contain the sample texts and their corresponding embeddings. You can inspect these using your preferred database tools (e.g., `psql` for pgvector, Attu or `pymilvus` for Milvus connected to `localhost:19530`).
-
-4.  **Stop and clean up:**
-    To stop all services and remove containers, networks, and volumes:
-    ```bash
-    docker-compose down -v
-    ```
-
-**Services Involved:**
-
-*   `qwen3-embedder`: Runs a Flask server with the Qwen3 GGUF model to provide text embedding generation via an API.
-*   `pgvector`: PostgreSQL database with the pgvector extension, used as the initial store for texts and their generated embeddings.
-*   `milvus`: Milvus vector database, serves as the target for migrating the embeddings from pgvector.
-*   `migration-tool`: Contains the `vectordb-migrate` CLI tool and the demo script. It orchestrates the embedding generation, storage, and migration.
+*   **Dataset Size**: You can change the number of papers processed by modifying `DATASET_SUBSET_SIZE` at the top of the `examples/qwen3_process_and_migrate.py` script. Rebuild the `qwen3-processor` image if you change the script and want it to take effect: `docker-compose build qwen3-processor && docker-compose up -d qwen3-processor`.
+*   **Model & Paths**: The Qwen3 model and its path are defined in the `docker/qwen3_processor/Dockerfile` (for download) and `examples/qwen3_process_and_migrate.py` (for loading). Configurations like `PGVECTOR_TABLE_NAME` and `QDRANT_TARGET_COLLECTION_NAME` are also in the script.
 
 ## Development
 

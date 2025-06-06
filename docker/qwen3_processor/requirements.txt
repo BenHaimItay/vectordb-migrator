@@ -1,0 +1,8 @@
+llama-cpp-python==0.2.73
+datasets
+psycopg2-binary
+qdrant-client
+huggingface-hub
+# Add other direct dependencies of the main script if any (e.g. requests, if used)
+# The vectordb-migration tool itself will be installed via `pip install .` in the Dockerfile,
+# so its own dependencies (like click, etc.) will be pulled from its pyproject.toml.

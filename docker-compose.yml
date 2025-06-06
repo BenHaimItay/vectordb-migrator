@@ -14,20 +14,14 @@ services:
       - ./docker/pgvector_init:/docker-entrypoint-initdb.d # Mount init scripts
       - pgvector_data:/var/lib/postgresql/data # Optional: for data persistence
 
-  milvus:
-    image: milvusdb/milvus:v2.3.16-standalone # Using a specific v2.3.x version
-    container_name: milvus-demo
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: qdrant-demo
     ports:
-      - "19530:19530" # gRPC
-      - "9091:9091"   # HTTP
-    environment:
-      # Milvus standalone typically doesn't require many specific env vars to just run,
-      # but check official Milvus docs for the image version if issues arise.
-      # Common ones might relate to data storage paths if not using default internal paths.
-      - ETCD_USE_EMBED=true # Often used for embedded etcd in standalone
-      - COMMON_STORAGETYPE=local # Default, but can be explicit
+      - "6333:6333"
+      - "6334:6334"
     volumes:
-      - milvus_data:/milvus/data # Optional: for data persistence
+      - qdrant_data:/qdrant/storage
 
   migration-tool:
     image: python:3.9-slim
@@ -35,25 +29,31 @@ services:
     working_dir: /app
     volumes:
       - .:/app
-    command: sh -c "pip install . requests && tail -f /dev/null"
+    command: sh -c "pip install . requests && tail -f /dev/null" # requests might be needed by other scripts
     depends_on:
-      - pgvector
-      - milvus
-      - qwen3-embedder
+      - pgvector # Depends on the pgvector service key
 
-  qwen3-embedder:
-    container_name: qwen3-embedder-demo
+  qwen3-processor:
+    container_name: qwen3-processor-demo
     build:
-      context: ./docker/qwen3_embedder
-    ports:
-      - "5000:5000"
+      context: ./docker/qwen3_processor
+      # dockerfile: Dockerfile # Default
     volumes:
-      - ./models:/models
+      - .:/app # Mount current project directory to /app
     environment:
-      - MODEL_PATH=/models/Qwen3-Embedding-0.6B-Q8_0.gguf
-      # Add other necessary environment variables for the server if any
+      - PGVECTOR_HOST=pgvector-demo
+      - PGVECTOR_PORT=5432
+      - PGVECTOR_USER=testuser
+      - PGVECTOR_PASSWORD=testpassword
+      - PGVECTOR_DB=vectordb
+      - QDRANT_HOST=qdrant-demo
+      - QDRANT_PORT=6333
+      - HF_HUB_ENABLE_HF_TRANSFER=1 # For potentially faster Hugging Face downloads
+    depends_on:
+      - pgvector # Service key for pgvector
+      - qdrant   # Service key for qdrant
+    command: tail -f /dev/null # Placeholder, will be replaced by Dockerfile CMD or overridden
 
 volumes: # Define named volumes for data persistence (optional but good practice)
   pgvector_data:
-  milvus_data:
-  # models_data: # Not strictly needed if using direct host mount for models
+  qdrant_data:

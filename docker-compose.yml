@@ -35,11 +35,25 @@ services:
     working_dir: /app
     volumes:
       - .:/app
-    command: sh -c "pip install . && tail -f /dev/null"
+    command: sh -c "pip install . requests && tail -f /dev/null"
     depends_on:
       - pgvector
       - milvus
+      - qwen3-embedder
+
+  qwen3-embedder:
+    container_name: qwen3-embedder-demo
+    build:
+      context: ./docker/qwen3_embedder
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./models:/models
+    environment:
+      - MODEL_PATH=/models/Qwen3-Embedding-0.6B-Q8_0.gguf
+      # Add other necessary environment variables for the server if any
 
 volumes: # Define named volumes for data persistence (optional but good practice)
   pgvector_data:
   milvus_data:
+  # models_data: # Not strictly needed if using direct host mount for models

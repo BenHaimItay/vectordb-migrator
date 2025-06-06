@@ -248,6 +248,61 @@ This project includes a `docker-compose.yml` setup to quickly demonstrate a migr
     docker-compose down -v
     ```
 
+### End-to-End Embedding and Migration Demo
+
+This more comprehensive demo showcases a full cycle: generating text embeddings using a local model, storing them in pgvector, and then migrating this data to Milvus.
+
+**Overview:**
+
+1.  A `qwen3-embedder` service (using Qwen3-Embedding-0.6B-GGUF via `llama.cpp` and Flask) generates embeddings for sample texts.
+2.  These texts and their embeddings are stored in a new table (`text_embeddings_demo`) within the `pgvector` service.
+3.  The `migration-tool` then migrates this data from pgvector to a new collection (`migrated_text_embeddings_demo`) in the `milvus` service.
+
+**Prerequisites:**
+
+*   Docker and Docker Compose installed.
+*   The Qwen3 GGUF model file. You need to download it and place it in a `./models` directory:
+    1.  Create the directory:
+        ```bash
+        mkdir models
+        ```
+    2.  Download the model (e.g., `Qwen3-Embedding-0.6B-Q8_0.gguf`):
+        ```bash
+        huggingface-cli download Qwen/Qwen3-Embedding-0.6B-GGUF Qwen3-Embedding-0.6B-Q8_0.gguf --local-dir ./models --local-dir-use-symlinks False
+        ```
+        (Ensure you have `huggingface-cli` installed: `pip install -U huggingface_hub[cli]`). If you download manually, ensure the final path is `./models/Qwen3-Embedding-0.6B-Q8_0.gguf` as expected by the `qwen3-embedder` service's environment variables.
+
+**Steps to Run the Demo:**
+
+1.  **Start all services:**
+    Open your terminal in the root of this project and run:
+    ```bash
+    docker-compose up -d --build
+    ```
+    The `--build` flag is crucial here, especially for the `qwen3-embedder` service to build its Docker image and install dependencies. The `-d` flag runs services in detached mode. Wait a minute or two for services to initialize, especially the `qwen3-embedder` which needs to load the model.
+
+2.  **Execute the end-to-end demo script:**
+    ```bash
+    docker-compose exec migration-tool python examples/run_embedding_migration_demo.py
+    ```
+    This script orchestrates the entire process: it calls the `qwen3-embedder` to get embeddings for sample texts, stores these in a new table in pgvector, and then runs the `vectordb-migrate` CLI (with a dynamically generated configuration) to migrate the data to Milvus. Check the script's output in your terminal to follow its progress.
+
+3.  **Verify the migration:**
+    After the script completes successfully, the `text_embeddings_demo` table in pgvector (DB: `vectordb`, User: `testuser`) and the `migrated_text_embeddings_demo` collection in Milvus will contain the sample texts and their corresponding embeddings. You can inspect these using your preferred database tools (e.g., `psql` for pgvector, Attu or `pymilvus` for Milvus connected to `localhost:19530`).
+
+4.  **Stop and clean up:**
+    To stop all services and remove containers, networks, and volumes:
+    ```bash
+    docker-compose down -v
+    ```
+
+**Services Involved:**
+
+*   `qwen3-embedder`: Runs a Flask server with the Qwen3 GGUF model to provide text embedding generation via an API.
+*   `pgvector`: PostgreSQL database with the pgvector extension, used as the initial store for texts and their generated embeddings.
+*   `milvus`: Milvus vector database, serves as the target for migrating the embeddings from pgvector.
+*   `migration-tool`: Contains the `vectordb-migrate` CLI tool and the demo script. It orchestrates the embedding generation, storage, and migration.
+
 ## Development
 
 ### Setup

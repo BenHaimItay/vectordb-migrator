@@ -83,7 +83,7 @@ class MilvusAdapter(VectorDBAdapter):
                     vector_field_name = field["name"]
                 elif not field["is_primary"] and field["type"] not in ["FLOAT_VECTOR", "BINARY_VECTOR"]:
                     metadata_field_names.append(field["name"])
-            
+
             if not primary_key_field_name:
                 logger.error(f"Primary key field could not be identified for collection {collection_name}.")
                 return []
@@ -105,13 +105,13 @@ class MilvusAdapter(VectorDBAdapter):
                 "offset": offset,
                 # "consistency_level": "Strong" # Or another appropriate level
             }
-            
+
             # Remove None filter_expr for the query call
             if filter_expr is None:
                 query_params.pop("expr")
 
             results = collection.query(**query_params)
-            
+
             extracted_data = []
             for res in results:
                 record = {
@@ -120,7 +120,7 @@ class MilvusAdapter(VectorDBAdapter):
                     "metadata": {mf: res.get(mf) for mf in metadata_field_names if res.get(mf) is not None}
                 }
                 extracted_data.append(record)
-            
+
             logger.info(f"Successfully extracted {len(extracted_data)} records from {collection_name}.")
             return extracted_data
 
@@ -136,7 +136,7 @@ class MilvusAdapter(VectorDBAdapter):
         Args:
             collection_name (str): The name of the collection.
             data (list[dict]): A list of dictionaries, where each dictionary must contain
-                               'id', and recommended to have 'vector', and 'metadata' keys. 
+                               'id', and recommended to have 'vector', and 'metadata' keys.
                                The 'metadata' should be a flat dictionary of field_name: value.
 
         Returns:
@@ -158,14 +158,14 @@ class MilvusAdapter(VectorDBAdapter):
                 raise ValueError(f"Collection {collection_name} does not exist.")
 
             collection = Collection(collection_name)
-            
+
             schema_info = self.get_schema_info(collection_name)
             if not schema_info or not schema_info.get("schema"):
                 logger.error(f"Could not retrieve schema for collection {collection_name}. Cannot prepare data for insertion.")
                 raise ValueError(f"Could not retrieve schema for {collection_name}.")
 
             primary_key_field_name = schema_info["schema"]["primary_field"]
-            vector_field_name = None 
+            vector_field_name = None
             metadata_field_names_from_schema = []
             schema_field_details = {field["name"]: field for field in schema_info["schema"]["fields"]}
 
@@ -175,7 +175,7 @@ class MilvusAdapter(VectorDBAdapter):
                     vector_field_name = field["name"]
                 elif not field["is_primary"] and field["type"] not in ["FLOAT_VECTOR", "BINARY_VECTOR"]:
                     metadata_field_names_from_schema.append(field["name"])
-            
+
             if not primary_key_field_name:
                  raise ValueError(f"Primary key not found in schema for {collection_name}")
 
@@ -183,7 +183,7 @@ class MilvusAdapter(VectorDBAdapter):
             # Milvus expects a list of lists, where each inner list is a column of data
             columns_for_milvus = {field_name: [] for field_name in schema_field_details.keys()}
             processed_ids = []
-            
+
             for record_idx, record in enumerate(data):
                 current_id = record.get('id')
                 if current_id is None:
@@ -219,24 +219,24 @@ class MilvusAdapter(VectorDBAdapter):
                         # raise ValueError(f"Record with id {current_id} is missing a vector for field {vector_field_name}")
                     else:
                         columns_for_milvus[vector_field_name].append(record['vector'])
-                
+
                 # 3. Metadata Fields
                 record_metadata = record.get('metadata', {})
                 for schema_meta_field_name in metadata_field_names_from_schema:
                     # If metadata from record is present for this schema field, add it.
                     # Otherwise, add None (Milvus may or may not accept None depending on field definition)
                     columns_for_milvus[schema_meta_field_name].append(record_metadata.get(schema_meta_field_name))
-                
+
                 # Warn about metadata in record that's not in schema
                 for record_meta_key in record_metadata.keys():
                     if record_meta_key not in schema_field_details:
                         logger.warning(f"Metadata field '{record_meta_key}' from input data for id '{current_id}' not found in collection schema. It will be ignored.")
-            
+
             # Ensure all columns have the same number of entries (equal to number of processed records)
             # This is critical for Milvus. If a primary key was processed, all other fields must have an entry for it.
             num_processed_records = len(processed_ids)
             final_ordered_milvus_data = [] # This will be the list of lists for Milvus
-            
+
             if num_processed_records == 0:
                 logger.info("No valid records to load after initial processing.")
                 return {"insert_count": 0, "errors": ["No valid records processed"], "success_count": 0, "failure_count": len(data)}
@@ -255,7 +255,7 @@ class MilvusAdapter(VectorDBAdapter):
                 final_ordered_milvus_data.append(columns_for_milvus[field_name])
 
             logger.info(f"Attempting to load {num_processed_records} records into {collection_name}.")
-            
+
             insert_result = collection.insert(final_ordered_milvus_data)
             # collection.flush() # Consider if flush is needed here
             # logger.info(f"Flushed data for collection {collection_name} (if applicable).")
@@ -269,7 +269,7 @@ class MilvusAdapter(VectorDBAdapter):
             # For simplicity, if an exception wasn't thrown, we assume all processed records attempted were covered by insert_count.
             # If insert_count < num_processed_records, it implies partial success not fully detailed by MutationResult alone without deeper inspection.
             # However, typically if there's a row-level error in the batch, pymilvus raises an exception.
-            
+
             errors_reported = []
             if success_count < num_processed_records :
                  # This implies partial success or an issue not caught by an exception.
@@ -277,7 +277,7 @@ class MilvusAdapter(VectorDBAdapter):
                  # For now, a generic message for discrepancy.
                  logger.warning(f"Milvus reported {success_count} inserts, but {num_processed_records} records were processed. Possible partial failure or miscount.")
                  errors_reported.append(f"Discrepancy: {num_processed_records} processed, {success_count} inserted.")
-            
+
             failure_count = num_processed_records - success_count + (len(data) - num_processed_records)
 
 
@@ -287,7 +287,7 @@ class MilvusAdapter(VectorDBAdapter):
                 "total_processed_count": num_processed_records,
                 "total_input_count": len(data),
                 "primary_keys_inserted": insert_result.primary_keys, # IDs of successfully inserted records
-                "errors": errors_reported 
+                "errors": errors_reported
             }
 
         except Exception as e:
@@ -297,7 +297,7 @@ class MilvusAdapter(VectorDBAdapter):
             # Fallback to assuming all input records failed if the error is general.
             processed_count_at_error = len(processed_ids) if 'processed_ids' in locals() else 0
             return {
-                "insert_count": 0, 
+                "insert_count": 0,
                 "total_processed_count": processed_count_at_error,
                 "total_input_count": len(data),
                 "errors": [str(e)],
@@ -328,7 +328,7 @@ class MilvusAdapter(VectorDBAdapter):
 
             collection = Collection(collection_name)
             schema = collection.schema
-            
+
             fields_info = []
             for field in schema.fields:
                 field_data = {

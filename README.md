@@ -62,7 +62,7 @@ Or for Milvus:
 ```json
 {
   "source": {
-    "type": "qdrant", 
+    "type": "qdrant",
     "connection": {
       "host": "localhost",
       "port": 6333
@@ -75,8 +75,8 @@ Or for Milvus:
     "type": "milvus",
     "connection": {
       "uri": "http://localhost:19530",
-      "token": "your_milvus_token_if_any", 
-      "db_name": "default" 
+      "token": "your_milvus_token_if_any",
+      "db_name": "default"
     },
     "load": {
       "collection_name": "target_items_milvus"

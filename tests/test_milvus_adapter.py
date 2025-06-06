@@ -18,7 +18,7 @@ class TestMilvusAdapter(unittest.TestCase):
         self.adapter = MilvusAdapter(
             host="localhost",
             port="19530",
-            alias="test_alias" 
+            alias="test_alias"
             # Add other default connection params if your adapter's __init__ expects them
         )
 
@@ -28,7 +28,7 @@ class TestMilvusAdapter(unittest.TestCase):
         self.assertEqual(self.adapter.connection_params["host"], "localhost")
         self.assertEqual(self.adapter.connection_params["port"], "19530")
         self.assertEqual(self.adapter.connection_params["alias"], "test_alias")
-        
+
         adapter_custom = MilvusAdapter(uri="http://anotherhost:19530", token="some_token", alias="custom_alias")
         self.assertEqual(adapter_custom.connection_params["uri"], "http://anotherhost:19530")
         self.assertEqual(adapter_custom.connection_params["token"], "some_token")
@@ -76,11 +76,11 @@ class TestMilvusAdapter(unittest.TestCase):
     def test_disconnect_successful(self, mock_connections):
         """Test successful disconnection."""
         # First, simulate a connection
-        self.adapter.client = "connected" 
+        self.adapter.client = "connected"
         self.adapter.connection_params = {"alias": "disconnect_alias"} # Set alias used for connection
-        
+
         self.adapter.disconnect()
-        
+
         mock_connections.disconnect.assert_called_once_with("disconnect_alias")
         self.assertIsNone(self.adapter.client)
 
@@ -91,7 +91,7 @@ class TestMilvusAdapter(unittest.TestCase):
         # connection_params might not have 'alias' if connect was called with it directly
         # and it was popped. setUp sets it.
         self.adapter.connection_params = {"host":"localhost"} # alias not present
-        
+
         self.adapter.disconnect()
         mock_connections.disconnect.assert_called_once_with("default") # As per adapter logic
 
@@ -102,13 +102,13 @@ class TestMilvusAdapter(unittest.TestCase):
         self.adapter.client = "connected"
         self.adapter.connection_params = {"alias": "fail_alias"}
         mock_connections.disconnect.side_effect = Exception("Disconnection error")
-        
+
         # Disconnect in adapter currently logs error but doesn't raise
-        self.adapter.disconnect() 
-        
+        self.adapter.disconnect()
+
         mock_connections.disconnect.assert_called_once_with("fail_alias")
         # Client is set to None even if disconnect fails, as per current adapter logic
-        self.assertIsNone(self.adapter.client) 
+        self.assertIsNone(self.adapter.client)
 
     @patch('vectordb_migration.adapters.milvus.connections')
     def test_disconnect_when_not_connected(self, mock_connections):
@@ -130,9 +130,9 @@ class TestMilvusAdapter(unittest.TestCase):
         """Test get_schema_info for a non-existent collection."""
         self.adapter.client = "connected" # Simulate connected state
         mock_utility.has_collection.return_value = False
-        
+
         schema_info = self.adapter.get_schema_info("non_existent_collection")
-        
+
         mock_utility.has_collection.assert_called_once_with("non_existent_collection")
         self.assertIsNone(schema_info)
         MockCollection.assert_not_called() # Collection object should not be created
@@ -159,11 +159,11 @@ class TestMilvusAdapter(unittest.TestCase):
         mock_collection_instance.schema = mock_schema
         mock_schema.description = "Schema Description"
         mock_schema.auto_id = False
-        
+
         # Mock fields
         mock_pk_field = MagicMock()
         mock_pk_field.name = "id_field"
-        mock_pk_field.dtype = DataType.INT64 
+        mock_pk_field.dtype = DataType.INT64
         mock_pk_field.is_primary = True
         mock_pk_field.description = "Primary Key Field"
         mock_pk_field.params = {}
@@ -174,7 +174,7 @@ class TestMilvusAdapter(unittest.TestCase):
         mock_vector_field.is_primary = False
         mock_vector_field.description = "Vector Field"
         mock_vector_field.params = {"dim": 128}
-        
+
         mock_scalar_field = MagicMock()
         mock_scalar_field.name = "scalar_field"
         mock_scalar_field.dtype = DataType.VARCHAR
@@ -221,7 +221,7 @@ class TestMilvusAdapter(unittest.TestCase):
 
         # The side_effect on MockCollection will cause an error when Collection(collection_name) is called
         schema_info = self.adapter.get_schema_info(collection_name)
-        
+
         self.assertIsNone(schema_info) # Adapter should catch exception and return None
         mock_utility.has_collection.assert_called_once_with(collection_name)
         MockCollection.assert_called_once_with(collection_name)
@@ -239,9 +239,9 @@ class TestMilvusAdapter(unittest.TestCase):
         """Test extract_data for a non-existent collection."""
         self.adapter.client = "connected"
         mock_utility.has_collection.return_value = False
-        
+
         data = self.adapter.extract_data("non_existent_collection")
-        
+
         mock_utility.has_collection.assert_called_once_with("non_existent_collection")
         self.assertEqual(data, [])
 
@@ -301,7 +301,7 @@ class TestMilvusAdapter(unittest.TestCase):
             }
         }
         mock_get_schema_info.return_value = mock_schema_info
-        
+
         mock_collection_instance = MockCollection.return_value
         # Simulate Milvus query results (list of dicts)
         query_results = [
@@ -376,7 +376,7 @@ class TestMilvusAdapter(unittest.TestCase):
                     {"name": "v", "type": "FLOAT_VECTOR", "is_primary": False},
                     {"name": "m", "type": "VARCHAR", "is_primary": False}]}}
         mock_get_schema_info.return_value = mock_schema_info
-        
+
         mock_collection_instance = MockCollection.return_value
         mock_collection_instance.query.return_value = [] # Actual data doesn't matter for this call check
 
@@ -409,7 +409,7 @@ class TestMilvusAdapter(unittest.TestCase):
         mock_collection_instance.query.side_effect = Exception("Milvus query failed")
 
         data = self.adapter.extract_data(collection_name)
-        
+
         self.assertEqual(data, []) # Should return empty list on error
         mock_collection_instance.query.assert_called_once()
 
@@ -447,7 +447,7 @@ class TestMilvusAdapter(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, f"Could not retrieve schema for {collection_name}."):
             self.adapter.load_data(collection_name, [{"id": 1, "vector": [0.1]}])
-        
+
         mock_get_schema_info.assert_called_once_with(collection_name)
 
     @patch('vectordb_migration.adapters.milvus.utility')
@@ -484,7 +484,7 @@ class TestMilvusAdapter(unittest.TestCase):
             }
         }
         mock_get_schema_info.return_value = mock_schema
-        
+
         mock_collection_instance = MockCollection.return_value
         mock_insert_result = MagicMock()
         mock_insert_result.insert_count = 2
@@ -495,7 +495,7 @@ class TestMilvusAdapter(unittest.TestCase):
             {"id": 1, "vector": [0.1, 0.2], "metadata": {"meta": "item1"}},
             {"id": 2, "vector": [0.3, 0.4], "metadata": {"meta": "item2"}},
         ]
-        
+
         # Expected data format for Milvus: list of columns
         # Order based on mock_schema.schema.fields
         expected_milvus_data = [
@@ -535,22 +535,22 @@ class TestMilvusAdapter(unittest.TestCase):
             }
         }
         mock_get_schema_info.return_value = mock_schema
-        
+
         data_to_load = [
             {"id": 1}, # Missing 'vector'
         ]
         # The adapter's load_data currently appends None if vector is missing but field exists.
         # This might or might not be what Milvus expects depending on schema strictness.
         # Here we test the adapter's behavior of appending None.
-        
+
         mock_collection_instance = MockCollection.return_value
         mock_insert_result = MagicMock()
-        mock_insert_result.insert_count = 1 
+        mock_insert_result.insert_count = 1
         mock_insert_result.primary_keys = [1]
         mock_collection_instance.insert.return_value = mock_insert_result
 
         # Expecting [id_values], [vector_values (with None for missing)]
-        expected_milvus_data = [[1], [None]] 
+        expected_milvus_data = [[1], [None]]
 
         result = self.adapter.load_data(collection_name, data_to_load)
 
@@ -574,18 +574,18 @@ class TestMilvusAdapter(unittest.TestCase):
             {"vector": [0.5, 0.6], "metadata": {"info": "no id"}}, # Missing 'id'
             {"id": 2, "vector": [0.7, 0.8]},
         ]
-        
+
         mock_collection_instance = MockCollection.return_value
         mock_insert_result = MagicMock()
         mock_insert_result.insert_count = 1 # Only the valid record
         mock_insert_result.primary_keys = [2]
         mock_collection_instance.insert.return_value = mock_insert_result
-        
+
         # Adapter skips record missing 'id'
-        expected_milvus_data = [[2]] 
+        expected_milvus_data = [[2]]
 
         result = self.adapter.load_data(collection_name, data_to_load)
-        
+
         mock_collection_instance.insert.assert_called_once_with(expected_milvus_data)
         self.assertEqual(result["insert_count"], 1)
         self.assertEqual(result["total_processed_count"], 1) # One record processed
@@ -605,14 +605,14 @@ class TestMilvusAdapter(unittest.TestCase):
         mock_get_schema_info.return_value = mock_schema
 
         data_to_load = [{"id": 1}, {"id": 2}, {"id": 3}]
-        
+
         mock_collection_instance = MockCollection.return_value
         mock_insert_result = MagicMock()
         mock_insert_result.insert_count = 1 # Milvus only inserted 1
         mock_insert_result.primary_keys = [1]
         # MutationResult might also have succ_index, err_index for more detailed errors
         mock_collection_instance.insert.return_value = mock_insert_result
-        
+
         expected_milvus_data = [[1, 2, 3]]
 
         result = self.adapter.load_data(collection_name, data_to_load)
@@ -636,7 +636,7 @@ class TestMilvusAdapter(unittest.TestCase):
         mock_get_schema_info.return_value = mock_schema
 
         data_to_load = [{"id": 1}]
-        
+
         mock_collection_instance = MockCollection.return_value
         mock_collection_instance.insert.side_effect = Exception("Milvus insert error")
 
